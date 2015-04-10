@@ -1,0 +1,127 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" lang="en"></meta>
+  <meta name="viewport" content="width=device-width;" />
+  <link rel="icon" href="turbo.png" type="image/png" />
+  <title>Flurnamen - Eppan</title>
+  <!--jQuery-->
+  <script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+  <!--leaflet-->
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css" />
+  <script src="//cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
+  <script src="//zverik.github.io/leaflet-grayscale/TileLayer.Grayscale.js"></script>
+  <script src="//mlevans.github.io/leaflet-hash/javascripts/leaflet-hash.js"></script>
+  <style>
+    html {
+      margin:0; padding:0;
+    }
+    body {
+      margin:0; padding:0;
+    }
+    #map {
+      position: absolute;
+      margin:0; padding:0;
+      top:0; left:0; right:0; bottom:0;
+    }
+    .leaflet-popup-pane {
+      opacity: 0.88;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 3px;
+    }
+    .clearBorderBackground {
+      border:none;
+      background-color:rgba(0,0,0,0);
+    }
+  </style>
+</head>
+<body>
+  <script>
+    $(document).ready(function() {
+      // some initalizations
+      // init leaflet
+      var map = new L.Map("map");
+      var tilesUrl = "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+      var tilesAttrib = '&copy; <a href="www.openstreetmap.org/copyright">OpenStreetMap</a> contributors&ensp;<small>Data:ODbL, Map:cc-by-sa</small>';
+      var tiles = L.tileLayer.grayscale(tilesUrl,{attribution:tilesAttrib});
+      map.addLayer(tiles);
+      scaleControl = new L.Control.Scale({metric:true,imperial:false,});
+      scaleControl.addTo(map);
+      // wait spinner
+      $(document).on({
+        ajaxStart: function() {
+          $("body").addClass("loading");
+        },
+        ajaxStop: function() {
+          $("body").removeClass("loading");
+        },
+      });
+
+      // get and show data
+      $.getJSON("flurnamen.geojson", function(data) {
+        var gjl = L.geoJson(data, {
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {radius:5});
+          },
+          onEachFeature: function(feature, layer) {
+            var popup = "<p>";
+            popup += "<h3>"+feature.properties["mundartl_1"]+(feature.properties["mundartl_2"].length?" ("+feature.properties["mundartl_2"]+")":"")+"</h3>";
+            popup += "<p>"+feature.properties["schreibvor"]+(feature.properties["schreibv_1"].length?" ("+feature.properties["schreibv_1"]+(feature.properties["schreibv_2"].length?" / "+feature.properties["schreibv_2"]:"")+")":"")+"</p>";
+            popup += "<p>"+feature.properties["hauptkat_1"];
+            popup += " / "+feature.properties["unterkat_1"];
+            popup += " / "+feature.properties["kategorie_"];
+            popup += (feature.properties["frueher"].length?" / ehem. "+feature.properties["frueher"]:"");
+            popup += "</p>";
+            if (feature.properties["anmerkung"].length) popup += "<p>"+feature.properties["anmerkung"]+"</p>";
+            if (feature.properties["zusatzbeme"].length) popup += "<p>"+feature.properties["zusatzbeme"]+"</p>";
+            layer.bindPopup(popup);
+            L.marker([feature.geometry.coordinates[1],feature.geometry.coordinates[0]], {icon: L.divIcon({
+              className: "clearBorderBackground",
+              html:"<span style='display:block;"+
+                   "position:absolute;"+
+                   "left:20px;"+
+                   "bottom:0px;"+
+                   "font-size:100%;"+
+                   "text-shadow:white 0 0 2px, white 0 0 4px, white 0 0 4px, white 0 0 4px;"+
+                   "white-space:nowrap;'>"+
+                   feature.properties["mundartl_1"]+
+                   "</span>",
+            })}).addTo(map).bindPopup(popup);
+          },
+          style: function(feature) {
+            var col;
+            var fill;
+            if (feature.properties["hauptkat_1"] == "Hydrografie")
+              col = fill = "blue";
+            else if (feature.properties["hauptkat_1"] == "Orografie")
+              col = fill = "brown";
+            else if (feature.properties["hauptkat_1"] == "Räumliche Einheiten")
+              col = fill = "orange";
+            else if (feature.properties["hauptkat_1"] == "Siedlungsgebiete")
+              col = fill = "green";
+            else if (feature.properties["hauptkat_1"] == "Verkehrswege")
+              col = fill = "gray";
+            else
+              col = fill = "red";
+            return {
+              color: col,
+              fill_color: fill,
+              opacity: 0.8,
+              fill_opacity: 0.4,
+              weight: 2,
+            }
+          },
+          filter: function(feature, layer) { return true; },
+        });
+        gjl.addTo(map);
+        //map.fitBounds(gjl.getBounds());
+        map.setView([46.4553,11.2596], 16, true);
+        var hash = new L.Hash(map);
+      });
+    });
+  </script>
+  <!--map-->
+  <div id="map"></div>
+</body>
+</html>
